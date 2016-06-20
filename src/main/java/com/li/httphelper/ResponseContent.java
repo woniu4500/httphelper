@@ -16,6 +16,8 @@ public class ResponseContent {
 	private String contentTypeString;
 	
 	private CookieStore cookieStore;
+	
+	private String cookieString;
 
 	public String getEncoding() {
 		return encoding;
@@ -50,8 +52,10 @@ public class ResponseContent {
 			throws UnsupportedEncodingException {
 		if (encoding == null) {
 			return new String(contentBytes);
+//			return new String(contentBytes);
 		}
 		return new String(contentBytes, encoding);
+//		return new String(contentBytes, encoding);
 	}
 
 	public String getUTFContent() throws UnsupportedEncodingException {
@@ -82,5 +86,12 @@ public class ResponseContent {
 		this.cookieStore = cookieStore;
 	}
 
-	
+	public String getCookieString() {
+		return cookieString;
+	}
+
+	public void setCookieString(String cookieString) {
+		this.cookieString = cookieString;
+	}
+
 }

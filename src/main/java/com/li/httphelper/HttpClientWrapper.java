@@ -9,6 +9,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.Consts;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
@@ -29,6 +31,7 @@ import org.apache.http.HeaderIterator;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.ParseException;
@@ -64,8 +67,11 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
+import org.apache.log4j.Logger;
 
 public class HttpClientWrapper {
+	private static final Logger log = Logger.getLogger(HttpClientWrapper.class);
+
 	private enum VERBTYPE {
 		GET, POST
 	}
@@ -80,6 +86,7 @@ public class HttpClientWrapper {
 	private List<NameValuePair> nameValuePostBodies;
 	private static PoolingHttpClientConnectionManager connManager = null;
 	private static CookieStore cookieStore = null;
+	private static String cookieString = null;
 
 	static {
 		try {
@@ -167,9 +174,11 @@ public class HttpClientWrapper {
 	 * @throws HttpException
 	 * @throws IOException
 	 */
-	public ResponseContent getResponse(String url, IdentityHashMap<String, Object> headers)
-			throws HttpException, IOException {
-		return this.getResponse(url, "UTF-8", VERBTYPE.GET, null, headers,false);
+	public ResponseContent getResponse(String url,
+			IdentityHashMap<String, Object> headers) throws HttpException,
+			IOException {
+		return this.getResponse(url, "UTF-8", VERBTYPE.GET, null, headers,
+				false);
 	}
 
 	/**
@@ -182,8 +191,10 @@ public class HttpClientWrapper {
 	 * @throws IOException
 	 */
 	public ResponseContent getResponse(String url, String urlEncoding,
-			IdentityHashMap<String, Object> headers) throws HttpException, IOException {
-		return this.getResponse(url, urlEncoding, VERBTYPE.GET, null, headers,false);
+			IdentityHashMap<String, Object> headers) throws HttpException,
+			IOException {
+		return this.getResponse(url, urlEncoding, VERBTYPE.GET, null, headers,
+				false);
 	}
 
 	/**
@@ -194,14 +205,18 @@ public class HttpClientWrapper {
 	 * @throws HttpException
 	 * @throws IOException
 	 */
-	public ResponseContent postNV(String url, IdentityHashMap<String, Object> headers)
-			throws HttpException, IOException {
-		return this.getResponse(url, "UTF-8", VERBTYPE.POST, null, headers,true);
+	public ResponseContent postNV(String url,
+			IdentityHashMap<String, Object> headers) throws HttpException,
+			IOException {
+		return this.getResponse(url, "UTF-8", VERBTYPE.POST, null, headers,
+				true);
 	}
 
 	public ResponseContent postNV(String url, String contentType,
-			IdentityHashMap<String, Object> headers,boolean modifyurl) throws HttpException, IOException {
-		return getResponse(url, "UTF-8", VERBTYPE.POST, contentType, headers,modifyurl);
+			IdentityHashMap<String, Object> headers, boolean modifyurl)
+			throws HttpException, IOException {
+		return getResponse(url, "UTF-8", VERBTYPE.POST, contentType, headers,
+				modifyurl);
 	}
 
 	/**
@@ -216,7 +231,8 @@ public class HttpClientWrapper {
 	 */
 	@SuppressWarnings("null")
 	public ResponseContent getResponse(String urlstr, String urlEncoding,
-			VERBTYPE bodyType, String contentType, IdentityHashMap<String, Object> headers,boolean modifyurl)
+			VERBTYPE bodyType, String contentType,
+			IdentityHashMap<String, Object> headers, boolean modifyurl)
 			throws HttpException, IOException {
 
 		if (urlstr == null)
@@ -235,9 +251,10 @@ public class HttpClientWrapper {
 			} else if (VERBTYPE.POST == bodyType) {
 				this.parseUrl(url);
 				HttpPost httpPost = null;
-				if(modifyurl){
+				if (modifyurl) {
 					httpPost = new HttpPost(toUrl());
-				}else{
+				} else {
+					log.debug("request url ---" + url);
 					httpPost = new HttpPost(url);
 				}
 
@@ -260,19 +277,22 @@ public class HttpClientWrapper {
 			request.setConfig(requestConfig);
 			request.addHeader(HttpHeaders.USER_AGENT,
 					"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322)");
-
+			printRequestHeader(request);
 			response = client.execute(request);
-			printResponse(response);
-			CookieStore cookieStore = setCookieStore(response);
-			
-			if(null!=response.getFirstHeader("Location")){
-				String location = response.getFirstHeader("Location").getValue();
-				if (location.contains("login")) {
-					// 执行get请求
-					HttpGet httpGet = new HttpGet(location);
-					response = client.execute(httpGet);
-					printResponse(response);
-				}
+			printResponseHeader(response);
+			cookieStore = setCookieStore(response);
+
+			if (null != response.getFirstHeader("Location")) {
+				do {
+
+					String location = response.getFirstHeader("Location")
+							.getValue();
+					log.debug("location-----" + location);
+					if (StringUtils.isNotBlank(location)) {
+						HttpGet httpGet = new HttpGet(location);
+						response = client.execute(httpGet);
+					}
+				} while (null != response.getFirstHeader("Location"));
 			}
 
 			entity = response.getEntity(); // 获取响应实体
@@ -281,6 +301,7 @@ public class HttpClientWrapper {
 			ResponseContent ret = new ResponseContent();
 			ret.setStatusCode(statusLine.getStatusCode());
 			ret.setCookieStore(cookieStore);
+			ret.setCookieString(cookieString);
 			getResponseContent(entity, ret);
 			return ret;
 		} finally {
@@ -301,8 +322,9 @@ public class HttpClientWrapper {
 		ret.setContentBytes(EntityUtils.toByteArray(entity));
 	}
 
-	public ResponseContent postEntity(String url,IdentityHashMap<String, Object> paramsMapHeader) throws HttpException,
-			IOException {
+	public ResponseContent postEntity(String url,
+			IdentityHashMap<String, Object> paramsMapHeader)
+			throws HttpException, IOException {
 		return this.postEntity(url, "UTF-8", paramsMapHeader);
 	}
 
@@ -314,7 +336,8 @@ public class HttpClientWrapper {
 	 * @throws HttpException
 	 * @throws IOException
 	 */
-	public ResponseContent postEntity(String url, String urlEncoding,IdentityHashMap<String, Object> paramsMapHeader)
+	public ResponseContent postEntity(String url, String urlEncoding,
+			IdentityHashMap<String, Object> paramsMapHeader)
 			throws HttpException, IOException {
 		if (url == null)
 			return null;
@@ -342,15 +365,18 @@ public class HttpClientWrapper {
 			entityBuilder.setCharset(CharsetUtils.get(urlEncoding));
 			httpPost.setEntity(entityBuilder.build());
 			request = httpPost;
-			
+
 			// 设置 header 为外围传入cookie值准备
 			Header headerss[] = buildHeader(paramsMapHeader);
 			if (headerss != null && headerss.length > 0) {
 				request.setHeaders(headerss);
 			}
-			
+
+			printRequestHeader(request);
 			response = client.execute(request);
-			CookieStore cookieStore = setCookieStore(response);
+			printResponseHeader(response);
+
+			cookieStore = setCookieStore(response);
 			// 响应状态
 			StatusLine statusLine = response.getStatusLine();
 			// 获取响应对象
@@ -358,6 +384,7 @@ public class HttpClientWrapper {
 			ResponseContent ret = new ResponseContent();
 			ret.setStatusCode(statusLine.getStatusCode());
 			ret.setCookieStore(cookieStore);
+			ret.setCookieString(cookieString);
 			getResponseContent(entity, ret);
 			return ret;
 		} finally {
@@ -562,26 +589,35 @@ public class HttpClientWrapper {
 		return contentBodies;
 	}
 
-	public void printResponse(HttpResponse httpResponse) throws ParseException,
-			IOException {
-//		// 获取响应消息实体
-//		HttpEntity entity = httpResponse.getEntity();
-//		// 响应状态
-//		System.out.println("status:" + httpResponse.getStatusLine());
-//		System.out.println("headers:");
-//		HeaderIterator iterator = httpResponse.headerIterator();
-//		while (iterator.hasNext()) {
-//			System.out.println("\t" + iterator.next());
-//		}
-//		
-//		
-//		// 判断响应实体是否为空
-//		// if (entity != null) {
-//		// String responseString = EntityUtils.toString(entity);
-//		// System.out.println("response length:" + responseString.length());
-//		// System.out.println("response content:"
-//		// + responseString.replace("\r\n", ""));
-//		// }
+	public void printRequestHeader(HttpRequest httpRequest)
+			throws ParseException, IOException {
+		// 获取响应消息实体
+		log.debug("request  headers:");
+		HeaderIterator iterator = httpRequest.headerIterator();
+		while (iterator.hasNext()) {
+			log.debug("\t" + iterator.next());
+		}
+	}
+
+	public void printResponseHeader(HttpResponse httpResponse)
+			throws ParseException, IOException {
+		// 获取响应消息实体
+		HttpEntity entity = httpResponse.getEntity();
+		// 响应状态
+		log.debug("status:" + httpResponse.getStatusLine());
+		log.debug("response  headers:");
+		HeaderIterator iterator = httpResponse.headerIterator();
+		while (iterator.hasNext()) {
+			log.debug("\t" + iterator.next());
+		}
+
+		// 判断响应实体是否为空
+		// if (entity != null) {
+		// String responseString = EntityUtils.toString(entity);
+		// log.debug("response length:" + responseString.length());
+		// log.debug("response content:"
+		// + responseString.replace("\r\n", ""));
+		// }
 	}
 
 	/**
@@ -596,7 +632,8 @@ public class HttpClientWrapper {
 			headers = new BasicHeader[params.size()];
 			int i = 0;
 			for (Entry<String, Object> entry : params.entrySet()) {
-				headers[i] = new BasicHeader(entry.getKey(), (String) entry.getValue());
+				headers[i] = new BasicHeader(entry.getKey(),
+						(String) entry.getValue());
 				i++;
 			}
 		}
@@ -605,32 +642,49 @@ public class HttpClientWrapper {
 
 	public static CookieStore setCookieStore(HttpResponse httpResponse) {
 		cookieStore = new BasicCookieStore();
-		HeaderIterator it = httpResponse.headerIterator("Set-Cookie");
-		String JSESSIONID = null;
-		String SPRING_SECURITY_REMEMBER_ME_COOKIE = null;
-		while (it.hasNext()) {
-			Header cookieheader = (Header) it.next();
-			String cookiestr = cookieheader.getValue();
-			if(cookiestr.contains("JSESSIONID")){
-				JSESSIONID = cookiestr.substring("JSESSIONID=".length(),
-						cookiestr.indexOf(";"));
-			}
-			if(cookiestr.contains("SPRING_SECURITY_REMEMBER_ME_COOKIE")){
-				SPRING_SECURITY_REMEMBER_ME_COOKIE = cookiestr.substring("SPRING_SECURITY_REMEMBER_ME_COOKIE=".length(),
-						cookiestr.indexOf(";"));
+		Header headers[] = httpResponse.getHeaders("Set-Cookie");
+		if (headers == null || headers.length == 0) {
+			return cookieStore;
+		}
+		String cookie = "";
+		for (int i = 0; i < headers.length; i++) {
+			cookie += headers[i].getValue();
+			if (i != headers.length - 1) {
+				cookie += ";";
 			}
 		}
-		
-//		System.out.println("JSESSIONID="+JSESSIONID);
-//		System.out.println("SPRING_SECURITY_REMEMBER_ME_COOKIE="+SPRING_SECURITY_REMEMBER_ME_COOKIE);		
-		// 新建一个Cookie
-		BasicClientCookie cookie1 = new BasicClientCookie("JSESSIONID",
-				JSESSIONID);
-		BasicClientCookie cookie2 = new BasicClientCookie("SPRING_SECURITY_REMEMBER_ME_COOKIE",
-				SPRING_SECURITY_REMEMBER_ME_COOKIE);
+		Map<String, String> cookieMap = new HashMap<String, String>();
+		String cookies[] = cookie.split(";");
+		for (String c : cookies) {
+			c = c.trim();
+			if (cookieMap.containsKey(c.split("=")[0])) {
+				cookieMap.remove(c.split("=")[0]);
+			}
+			cookieMap.put(
+					c.split("=")[0],
+					c.split("=").length == 1 ? ""
+							: (c.split("=").length == 2 ? c.split("=")[1] : c
+									.split("=", 2)[1]));
+		}
+		StringBuffer sb = new StringBuffer();
+		for (String key : cookieMap.keySet()) {
+			sb.append(key + "=" + cookieMap.get(key) + ";");
+			log.debug(key + "=" + cookieMap.get(key) + ";");
+			BasicClientCookie cookietmp = new BasicClientCookie(key,
+					cookieMap.get(key));
+			cookieStore.addCookie(cookietmp);
+		}
 
-		cookieStore.addCookie(cookie1);
-		cookieStore.addCookie(cookie2);
+		cookieString = sb.toString().substring(0, sb.toString().length() - 1);
 		return cookieStore;
 	}
+
+	public static CookieStore getCookieStore() {
+		return cookieStore;
+	}
+
+	public static String getCookieString() {
+		return cookieString;
+	}
+
 }

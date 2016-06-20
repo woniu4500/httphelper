@@ -193,20 +193,43 @@ public class HttpHelper {
 
 	// test
 	public static void testGet() {
-		String url = "http://172.16.128.157:8080/hhc.gate/doSendRegVaild.action?mobile=18682265052";
-		ResponseContent responseContent = getUrlRespContent(url, null);
+//		String url = "http://172.16.128.157:8080/hhc.gate/doSendRegVaild.action?mobile=18682265052";
+//		String url = "http://58.220.193.178:8880/yw/login.asp?username=100068875&password=123";
+//		ResponseContent responseContent = getUrlRespContent(url, null);
+//		String url = "http://58.220.193.178:8880/yw/login.asp?username=100068875&password=123";
+////		IdentityHashMap<String,Object> header = new IdentityHashMap<String,Object>();
+////		header.put(new String("Cookie"), "ASPSESSIONIDQSCRSRAS=PDFICLHDKMMHOODOHOEAJNCF"); 
+//		ResponseContent responseContent = HttpHelper.getUrlRespContent(url, null);
+//		responseContent.setEncoding("GBK");
+//		try {
+//			System.out.println(responseContent.getContent());
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+		
+//		year=2014&PageNo=2
+		String url1 = "http://58.220.193.178:8880/yw/detail_p.asp?year=2016&PageNo=2";
+		IdentityHashMap<String,Object> header = new IdentityHashMap<String,Object>();
+//		ASPSESSIONIDQQCRSRAS=BJPICLHDPGMEEKFHPGDEAEHJ
+		header.put(new String("Cookie"), "ASPSESSIONIDQQCRSRAS=BJPICLHDPGMEEKFHPGDEAEHJ"); 
+		ResponseContent responseContent1 = HttpHelper.getUrlRespContent(url1, header);
+		responseContent1.setEncoding("GBK");
 		try {
-			System.out.println(responseContent.getContent());
-		} catch (UnsupportedEncodingException e) {
+			System.out.println(responseContent1.getContent());
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
+
 	// test
 	public static void testLogin() {
-		// String url =
-		// "http://localhost:8180/hhc.gate/app_login_check?j_username=18682265052&j_password=123456&remember-me=on";
-		String url = "http://localhost:8180/hhc.gate/app_login_check?j_username=18682265052&j_password=123456";
+		 String url =
+		 "http://localhost:8180/hhc.gate/app_login_check?j_username=18682265052&j_password=654321&remember-me=on";
+//		String url = "http://localhost:8180/hhc.gate/app_login_check?j_username=18682265052&j_password=123456";
+//		String url = "http://172.16.128.120:8180/fenqiconsole/applogin.action?mobile=15618532505&password=2d1a623e6490b38cb138f0930c254b6d";
+		
+//		String url = "http://58.220.193.178:8880/yw/login.asp?username=100068875&password=123";
 		ResponseContent responseContent = postUrl(url, null);
 
 		try {
@@ -338,24 +361,27 @@ public class HttpHelper {
 	}
 
 	public static void main(String[] args) {
-		// testGet();
-		// testLogin();
-
+		 testGet();
+//		 testLogin();
 		// String rememberMe = "JSESSIONID=1v1w4lrkscim01cj59pe4yjzx5";
 		// String rememberMe = "SPRING_SECURITY_REMEMBER_ME_COOKIE=null";
 		// testUploadFile();
-		String url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=r5FOf-cPiNKt6l_ErcvTIhdN3UOKsxm0bDVcSNwpyJ2Wrp7gp3eB36I84HT_ahMAv-3UV3J81OsJ6YlTgtYehWrIc-bX4tYiyjhyfLYZpGIOPHbAFATUM";
-//		 String jsonMessage =
-//		 "{'msgtype':'text','text':{'content':'欢迎查看优贷通报表\n20151116--目前    新增会员124人,贷款申请5位\n资料已提交1位\n资料录已审核1位\n审核已驳回3位\n\n\n20151116--目前    杉德新增会员1人,贷款申请0位\n'},'touser':'oTZ_ysn90OXB_FhTGZAeTIZPwElw'}";
-		String jsonMessage = "{\"touser\": \"oTZ_ysn90OXB_FhTGZAeTIZPwElw\",\"msgtype\": \"text\",\"text\": {\"content\": \"你好\"}}";
-		try {
-			// String str = postJsonEntity(url, jsonMessage, null, false)
-			// .getContent();
-			String str = postJson(url, jsonMessage);
-			System.out.println(str);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		String url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=r5FOf-cPiNKt6l_ErcvTIhdN3UOKsxm0bDVcSNwpyJ2Wrp7gp3eB36I84HT_ahMAv-3UV3J81OsJ6YlTgtYehWrIc-bX4tYiyjhyfLYZpGIOPHbAFATUM";
+//
+////		 String jsonMessage =
+////		 "{'msgtype':'text','text':{'content':'欢迎查看优贷通报表\n20151116--目前    新增会员124人,贷款申请5位\n资料已提交1位\n资料录已审核1位\n审核已驳回3位\n\n\n20151116--目前    杉德新增会员1人,贷款申请0位\n'},'touser':'oTZ_ysn90OXB_FhTGZAeTIZPwElw'}";
+//		String jsonMessage = "{\"touser\": \"oTZ_ysn90OXB_FhTGZAeTIZPwElw\",\"msgtype\": \"text\",\"text\": {\"content\": \"你好\"}}";
+//		try {
+//			// String str = postJsonEntity(url, jsonMessage, null, false)
+//			// .getContent();
+//			String str = postJson(url, jsonMessage);
+//			System.out.println(str);
+//		} catch (Exception e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 	}
+	
+	
+	
 }
