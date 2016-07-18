@@ -102,8 +102,8 @@ public class HttpMultiConReqHelper {
 		
 	}
 	
-	public static void main(String [] args){
-		testGet();
-	}
+//	public static void main(String [] args){
+//		testGet();
+//	}
 	
 }
